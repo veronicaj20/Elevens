@@ -10,14 +10,24 @@ import java.awt.Font;
 class DrawPanel extends JPanel implements MouseListener {
 
     private ArrayList<Card> hand;
+    private ArrayList<Card> deck;
+    private Deck currentDeck;
     private Rectangle button;
-    private Deck fullDeck;
+    private Rectangle otherButton;
+    private boolean won = false;
+    private boolean lost = false;
+    private ArrayList<Card> selected = new ArrayList<Card>();
+    private ArrayList<Integer> positions = new ArrayList<Integer>();
+    private int count;
 
     public DrawPanel() {
         button = new Rectangle(153, 230, 160, 26);
+        otherButton = new Rectangle(153, 285, 160, 26);
         this.addMouseListener(this);
         hand = Card.buildHand();
-        fullDeck = new Deck(hand);
+        currentDeck = new Deck(hand);
+        deck = currentDeck.getDeck();
+        count = deck.size();
     }
 
     protected void paintComponent(Graphics g) {
@@ -57,62 +67,76 @@ class DrawPanel extends JPanel implements MouseListener {
             g.drawImage(c.getImage(), x3, y3, null);
             x3 = x3 + c.getImage().getWidth() + 10;
         }
-
-
         g.setFont(new Font("Courier New", Font.BOLD, 20));
         g.drawString("GET NEW CARDS", 155, 250);
+            g.drawString("REPLACE CARDS", 155, 305);
+        g.drawString("CARDS LEFT: " + count, 10, 450);
+        if (won){
+            g.drawString("YOU WON!!", 50, 400);
+        }
+        if (lost){
+            g.drawString("YOU LOST!", 50, 400);
+        }
         g.drawRect((int)button.getX(), (int)button.getY(), (int)button.getWidth(), (int)button.getHeight());
+        g.drawRect((int)otherButton.getX(), (int)otherButton.getY(), (int)otherButton.getWidth(), (int)otherButton.getHeight());
+
     }
 
     public void mousePressed(MouseEvent e) {
-
         Point clicked = e.getPoint();
-
-        if (e.getButton() == 1) {
+        if (e.getButton() == 1 || e.getButton() == 3) {
             if (button.contains(clicked)) {
-                regenerateCards();
+                hand = Card.buildHand();
+                deck = new Deck(hand).getDeck();
+                won = false;
+                lost = false;
             }
-
-            for (int i = 0; i < hand.size(); i++) {
+            for (int i = 0; i < hand.size(); i++){
                 Rectangle box = hand.get(i).getCardBox();
-                if (box.contains(clicked)) {
-                    hand.get(i).flipCard();
-                }
-            }
-        }
-
-        if (e.getButton() == 3) {
-            for (int i = 0; i < hand.size(); i++) {
-                Card c = hand.get(i);
-                Rectangle box = hand.get(i).getCardBox();
-                if (box.contains(clicked)) {
-                    if (box.contains(clicked)) {
-                        if (c.getHighlight()) {
-                            fullDeck.replaceCard();
-                        } else {
-                            hand.get(i).flipHighlight();
-                        }
-
+                if (box.contains(clicked)){
+                    hand.get(i).flipHighlight();
+                    boolean currHighlight = hand.get(i).getHighlight();
+                    if (currHighlight){
+                        selected.add(hand.get(i));
+                        positions.add(i);
                     }
-
+                    else{
+                        Integer x = i;
+                        selected.remove(hand.get(i));
+                        positions.remove(positions.indexOf(x));
+                    }
                 }
+            }
 
-
+            if (otherButton.contains(clicked)){
+                if (currentDeck.replaceCard(selected)){
+                    for (int i = 0; i < selected.size(); i++){
+                        Card replaced = selected.get(i);
+                        int position = positions.get(i);
+                        Card c = currentDeck.genNewCard();
+                        hand.remove(position);
+                        hand.add(position, c);
+                        replaced.flipHighlight();
+                        count -= selected.size();
+                    }
+                    resetSelected();
+                    resetPositions();
+                }
             }
         }
-
-
+        count = deck.size();
+        if (count == 0) won = true;
+        if (currentDeck.noMoves(hand)) lost = true;
     }
 
+    public void resetSelected(){
+        selected = new ArrayList<Card>();
+    }
+    public void resetPositions(){
+        positions = new ArrayList<Integer>();
+    }
     public void mouseReleased(MouseEvent e) { }
     public void mouseEntered(MouseEvent e) { }
     public void mouseExited(MouseEvent e) { }
     public void mouseClicked(MouseEvent e) { }
-
-    public void regenerateCards() {
-        hand = Card.buildHand();
-        fullDeck = new Deck(hand);
-        removeMouseListener(this);
-        addMouseListener(this);
-    }
 }
